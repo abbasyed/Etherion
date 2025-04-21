@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./security/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract Etherion is ERC20, ERC20Burnable, Ownable, Pausable {
     uint256 private _feePercentage; // Fee in basis points (1/100 of a percent)
@@ -17,11 +17,13 @@ contract Etherion is ERC20, ERC20Burnable, Ownable, Pausable {
     constructor(
         uint256 initialSupply,
         address initialOwner
-    ) ERC20("Etherion", "ETN") Ownable(initialOwner) {
+    ) ERC20("Etherion", "ETN") {
         _mint(initialOwner, initialSupply * 10 ** decimals());
-        _feePercentage = 50; // 0.5% default fee
+        _feePercentage = 50; // Default 0.5% fee
         _feeCollector = initialOwner;
+        _transferOwnership(initialOwner); // Transfer ownership in constructor
     }
+    
     
     // Pause token transfers
     function pause() public onlyOwner {

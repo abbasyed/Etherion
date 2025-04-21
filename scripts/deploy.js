@@ -1,21 +1,20 @@
-const hre = require("hardhat");
-
 async function main() {
   const [deployer] = await ethers.getSigners();
 
   console.log("Deploying Etherion with the account:", deployer.address);
-
-  // Initial token supply: 1,000,000 tokens
-  const initialSupply = 1000000;
+  console.log(
+    "Account balance:",
+    (await ethers.provider.getBalance(deployer.address)).toString()
+  );
 
   const Etherion = await ethers.getContractFactory("Etherion");
-  const etherion = await Etherion.deploy(initialSupply, deployer.address);
+  // Deploy with 1,000,000 tokens initial supply
+  const etherion = await Etherion.deploy(1000000, deployer.address);
 
-  await etherion.deployed();
+  // Wait for contract to be deployed
+  await etherion.waitForDeployment();
 
-  console.log("Etherion deployed to:", etherion.address);
-  console.log("Initial supply:", initialSupply, "ETN");
-  console.log("Owner:", deployer.address);
+  console.log("Etherion Token address:", await etherion.getAddress());
 }
 
 main()

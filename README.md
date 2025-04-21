@@ -4,8 +4,8 @@ This guide will walk you through setting up and deploying your enhanced Etherion
 
 ## Prerequisites
 
-- Node.js (v14 or later)
-- npm (v6 or later)
+- Node.js (v16 or later)
+- npm (v8 or later)
 - Git
 
 ## Part 1: Smart Contract Development
@@ -21,7 +21,7 @@ cd etherion-project
 npm init -y
 
 # Install Hardhat and dependencies
-npm install --save-dev hardhat @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers @openzeppelin/contracts
+npm install --save-dev hardhat @nomicfoundation/hardhat-ethers @nomicfoundation/hardhat-chai-matchers ethers chai @openzeppelin/contracts
 ```
 
 ### 2. Initialize Hardhat
@@ -32,30 +32,33 @@ npx hardhat
 
 Choose "Create a JavaScript project" when prompted.
 
-### 3. Replace the default contracts
+### 3. Create the Etherion token contract
 
-Delete the sample Lock.sol contract in the contracts folder and create a new file called `EnhancedEtherion.sol` with the content from the EnhancedEtherion.sol artifact.
+Replace the default contract in the contracts folder with your Etherion.sol file.
 
-### 4. Update the deployment script
+### 4. Configure Hardhat
 
-Replace the content of `scripts/deploy.js` with the content from the deploy-enhanced.js artifact.
+Update the
 
-### 5. Create a test file
+hardhat.config.js
 
-Create a new file in the test directory called `EnhancedEtherion-test.js` with the content from the EnhancedEtherion-test.js artifact.
-
-### 6. Update hardhat.config.js
-
-Make sure your hardhat.config.js file includes the proper compiler version:
+file:
 
 ```javascript
-require("@nomiclabs/hardhat-waffle");
+const path = require("path");
+
+require("@nomicfoundation/hardhat-ethers");
+require("@nomicfoundation/hardhat-chai-matchers");
+require("solidity-coverage");
 
 module.exports = {
   solidity: {
     compilers: [
       {
         version: "0.8.20",
+      },
+      {
+        version: "0.8.28",
       },
     ],
   },
@@ -68,126 +71,164 @@ module.exports = {
       chainId: 31337,
     },
   },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts",
+  },
 };
 ```
 
-### 7. Compile and test the contract
+### 5. Deploy the contract
 
-```bash
-# Compile the contract
-npx hardhat compile
-
-# Run tests
-npx hardhat test
-```
-
-### 8. Deploy the contract locally
-
-First, start a local Hardhat node:
-
-```bash
-npx hardhat node
-```
-
-In a new terminal window, deploy the contract to the local node:
+Create a deployment script in the scripts folder:
 
 ```bash
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-Make sure to save the contract address that is output after deployment. You'll need it for the web application.
+### 6. Interact with the contract
 
-## Part 2: Web Application Development
-
-### 1. Create a new React application
+You can interact with your deployed contract using the interact.js script:
 
 ```bash
-# From your project root
-mkdir etherion-dapp
-cd etherion-dapp
-
-# Initialize a new React app
-npx create-react-app .
-
-# Install required dependencies
-npm install ethers web3modal @walletconnect/web3-provider
+npx hardhat run scripts/interact.js --network localhost
 ```
 
-### 2. Set up contract artifacts
+## Part 2: Frontend Development
 
-Create a new directory in the src folder for your contract artifacts:
+### 1. Set up the React application
 
 ```bash
-mkdir -p src/artifacts/contracts/EnhancedEtherion.sol
+# Install frontend dependencies
+npm install web3modal @web3-react/core @web3-react/injected-connector @walletconnect/web3-provider ethers react react-dom react-scripts react-app-rewired
 ```
 
-Copy the compiled contract artifact from your Hardhat project:
+### 2. Configure React App
 
-```bash
-cp ../artifacts/contracts/EnhancedEtherion.sol/EnhancedEtherion.json src/artifacts/contracts/EnhancedEtherion.sol/
+Create a
+
+config-overrides.js
+
+file to handle Web3 dependencies:
+
+```javascript
+const webpack = require("webpack");
+
+module.exports = function override(config) {
+  config.resolve.fallback = {
+    crypto: require.resolve("crypto-browserify"),
+    stream: require.resolve("stream-browserify"),
+    assert: require.resolve("assert"),
+    http: require.resolve("stream-http"),
+    https: require.resolve("https-browserify"),
+    os: require.resolve("os-browserify"),
+    url: require.resolve("url"),
+    buffer: require.resolve("buffer"),
+    process: require.resolve("process/browser"),
+  };
+
+  config.plugins.push(
+    new webpack.ProvidePlugin({
+      process: "process/browser",
+      Buffer: ["buffer", "Buffer"],
+    })
+  );
+
+  config.ignoreWarnings = [/Failed to parse source map/];
+
+  return config;
+};
 ```
 
-### 3. Create the React components
+### 3. Update
 
-Replace the content of the following files with the content from the etherion-dapp artifact:
+package.json
 
-- src/App.js
-- src/App.css
-- public/index.html
+scripts
 
-### 4. Update the contract address
+```json
+"scripts": {
+  "start": "react-app-rewired start",
+  "build": "react-app-rewired build",
+  "test": "react-app-rewired test",
+  "eject": "react-scripts eject"
+}
+```
 
-In src/App.js, replace "YOUR_CONTRACT_ADDRESS" with the address of your deployed contract.
+### 4. Create contract configuration
 
-Also replace "YOUR_INFURA_ID" with your Infura project ID, or you can use a different provider.
+Create a contractConfig.js file in your src directory:
 
-### 5. Start the web application
+```javascript
+import { abi } from "../artifacts/contracts/Etherion.sol/Etherion.json";
+
+export const EtherionABI = abi;
+export const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
+```
+
+### 5. Run the application
 
 ```bash
 npm start
 ```
 
-Your application should now be running on http://localhost:3000.
+## Part 3: Testing
 
-## Features Overview
+### 1. Connect with MetaMask
 
-### Enhanced Smart Contract Features
+- Add the local network to MetaMask (http://localhost:8545, Chain ID: 31337)
+- Import a private key from your Hardhat node
+- Connect to the application
 
-1. **Token Burning**: Users can burn their tokens, permanently removing them from circulation.
-2. **Transfer Fees**: A small fee is applied to each transfer, which is sent to a designated fee collector.
-3. **Whitelist**: Certain addresses can be exempt from transfer fees.
-4. **Ownership Control**: Only the contract owner can perform administrative functions like minting new tokens or changing fees.
-5. **Statistics Tracking**: The contract tracks metrics like total burned tokens and total fees collected.
+### 2. Test functionality
 
-### Web Application Features
+- Check token balance
+- Transfer tokens to another address
+- Test fee deduction
+- Test owner functions (if applicable)
 
-1. **Wallet Connection**: Users can connect with MetaMask or other Ethereum wallets.
-2. **Token Information**: View token statistics like total supply, burned tokens, etc.
-3. **Transfer Tokens**: Send tokens to other addresses.
-4. **Burn Tokens**: Burn your own tokens to reduce supply.
-5. **Admin Panel**: For the contract owner, additional controls for setting fees and managing the whitelist.
+## Part 4: Deployment
 
-## Deployment to a Public Testnet
+For deploying to public networks:
 
-To deploy to a public testnet like Goerli or Sepolia:
+1. Update
 
-1. Get some testnet ETH from a faucet.
-2. Update your `hardhat.config.js` to include the testnet configuration:
+hardhat.config.js
 
-```javascript
-require("@nomiclabs/hardhat-waffle");
-require("dotenv").config();
+with your network details 2. Deploy using:
 
-// Create a .env file with your private key and Infura API key
-module.exports = {
-  solidity: {
-    compilers: [
-      {
-        version: "0.8.20"
-      }
-    ]
-  },
-  networks: {
-    goerli: {
-      url: `https://goerli.infura.io/v3/${
+```bash
+npx hardhat run scripts/deploy.js --network <network-name>
 ```
+
+3. Update the contract address in your frontend
+
+## Project Structure
+
+```
+etherion-project/
+├── contracts/           # Solidity contracts
+├── scripts/             # Deployment and interaction scripts
+├── test/                # Contract tests
+├── artifacts/           # Compiled contract data
+├── src/                 # React frontend
+│   ├── App.js           # Main application
+│   └── contractConfig.js # Contract configuration
+├── config-overrides.js  # Webpack configuration
+├── hardhat.config.js    # Hardhat configuration
+└── package.json         # Project dependencies
+```
+
+## License
+
+This project is licensed under the MIT License.
+
+## Contributors
+
+- [Abbas](https://github.com/abbasyed)
+
+---
+
+Note: This project is for educational purposes only. Always perform proper security audits before deploying to mainnet.
